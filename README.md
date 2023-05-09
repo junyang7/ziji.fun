@@ -1,19 +1,23 @@
-# dh.ziji.fun
+# 克隆项目
 
-## Project setup
-```
-npm install
-```
-
-### Compiles and hot-reloads for development
-```
-npm run serve
+```shell
+git clone https://github.com/junyang7/ziji.fun
 ```
 
-### Compiles and minifies for production
-```
-npm run build
+# 安装依赖
+
+```shell
+cnpm install
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+# 本地开发
+
+```shell
+cnpm run dev
+```
+
+# 编译打包
+
+```shell
+cnpm run build:release
+```

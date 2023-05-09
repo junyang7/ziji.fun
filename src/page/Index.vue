@@ -1,13 +1,20 @@
 <template>
   <div>
-    Hello Vue2!
-    <i class="ri-at-line"></i>
+
+    <!--背景-->
+    <div>
+      <Background></Background>
+    </div>
+
   </div>
 </template>
 
 <script>
+import Background from "@/component/Background.vue";
+
 export default {
-  name: "Index"
+  name: "Index",
+  components: {Background}
 }
 </script>
 

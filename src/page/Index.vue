@@ -17,35 +17,56 @@
     </div>
 
     <div>
-      <button @click="openAddWindow">添加</button>
+      <button @click="openAppAddWindow">添加</button>
     </div>
 
-
+    <!--应用展示区域-->
     <div>
       <template v-for="(a,b,c) in app_list">
-        <div v-if="a"
-             style="border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 10px;">
+
+        <!--应用-->
+        <div
+            style="border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 10px;"
+            draggable="true"
+            @dragover.prevent
+            @dragstart="onAppDragStart(a, $event)"
+            @drop.stop="onAppDropStop(a, $event)"
+        >
           <div
+              draggable="false"
               @click="open(a)"
               style="width: 50px; height: 50px; border: 1px solid red;">
-            <img :src="a.favicon" style="width: 100%; height: 100%;"/>
+            <img
+                draggable="false"
+                :src="a.favicon" style="width: 100%; height: 100%;"/>
           </div>
-          <div style="text-align: center;">{{ a.name }}</div>
-          <div>
-            <div>
-              <button @click="openSetWindow(a)">修改</button>
+          <div
+              draggable="false"
+              style="text-align: center;">{{ a.name }}
+          </div>
+          <div draggable="false">
+            <div draggable="false">
+              <button
+                  draggable="false"
+                  @click="openAppSetWindow(a)">修改
+              </button>
             </div>
-            <div>
-              <button @click="openDelWindow(a)">删除</button>
+            <div
+                draggable="false">
+              <button
+                  draggable="false"
+                  @click="openAppDelWindow(a)">删除
+              </button>
             </div>
           </div>
         </div>
+
       </template>
     </div>
 
     <!--弹框-->
     <!--添加-->
-    <div v-show="showAddWindow"
+    <div v-show="showAppAddWindow"
          style="position: fixed; border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 36px; background-color: #ffffff;">
       <div>
         <div>名称</div>
@@ -60,12 +81,12 @@
         <input v-model="app.favicon"/>
       </div>
       <div>
-        <button @click="confirmAdd">添加</button>
-        <button @click="closeAddWindow">取消</button>
+        <button @click="confirmAppAdd">添加</button>
+        <button @click="closeAppAddWindow">取消</button>
       </div>
     </div>
     <!--修改-->
-    <div v-show="showSetWindow"
+    <div v-show="showAppSetWindow"
          style="position: fixed; border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 36px; background-color: #ffffff;">
       <div>
         <div>名称</div>
@@ -80,19 +101,19 @@
         <input v-model="app.favicon"/>
       </div>
       <div>
-        <button @click="confirmSet(app)">修改</button>
-        <button @click="closeSetWindow">取消</button>
+        <button @click="confirmAppSet(app)">修改</button>
+        <button @click="closeAppSetWindow">取消</button>
       </div>
     </div>
     <!--删除-->
-    <div v-show="showDelWindow"
+    <div v-show="showAppDelWindow"
          style="position: fixed; border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 36px; background-color: #ffffff;">
       <div>
         您真的要删除「<span style="color: red;">{{ app.name }}</span>」吗？
       </div>
       <div>
-        <button @click="confirmDel(app)">删除</button>
-        <button @click="closeDelWindow">取消</button>
+        <button @click="confirmAppDel(app)">删除</button>
+        <button @click="closeAppDelWindow">取消</button>
       </div>
     </div>
 
@@ -109,9 +130,9 @@ export default {
   components: {Search, Icp, Background},
   data() {
     return {
-      showAddWindow: false,
-      showSetWindow: false,
-      showDelWindow: false,
+      showAppAddWindow: false,
+      showAppSetWindow: false,
+      showAppDelWindow: false,
       app: {
         id: 0,
         name: "",
@@ -125,54 +146,54 @@ export default {
     init() {
       this.app_list = JSON.parse(window.localStorage.getItem("ziji.app_list")) || [];
     },
-    openAddWindow() {
+    openAppAddWindow() {
       this.app = {
         id: ((new Date()).getTime() + Math.random() * 1000000).toString().replace(".", ""),
         name: "",
         url: "",
         favicon: "",
       };
-      this.showAddWindow = true;
+      this.showAppAddWindow = true;
       this.$forceUpdate();
     },
-    confirmAdd() {
+    confirmAppAdd() {
       this.app_list.push(JSON.parse(JSON.stringify(this.app)));
       window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
-      this.showAddWindow = false;
+      this.showAppAddWindow = false;
       this.$forceUpdate();
     },
-    closeAddWindow() {
-      this.showAddWindow = false;
+    closeAppAddWindow() {
+      this.showAppAddWindow = false;
       this.$forceUpdate();
     },
     open(app) {
       window.open(app.url)
     },
-    openSetWindow(app) {
+    openAppSetWindow(app) {
       this.app = JSON.parse(JSON.stringify(app))
-      this.showSetWindow = true;
+      this.showAppSetWindow = true;
       this.$forceUpdate();
     },
-    confirmSet(app) {
+    confirmAppSet(app) {
       for (let i = 0; i < this.app_list.length; i++) {
         if (this.app_list[i].id === app.id) {
           this.app_list[i] = app;
         }
       }
       window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
-      this.showSetWindow = false;
+      this.showAppSetWindow = false;
       this.$forceUpdate();
     },
-    closeSetWindow() {
-      this.showSetWindow = false;
+    closeAppSetWindow() {
+      this.showAppSetWindow = false;
       this.$forceUpdate();
     },
-    openDelWindow(app) {
+    openAppDelWindow(app) {
       this.app = app;
-      this.showDelWindow = true;
+      this.showAppDelWindow = true;
       this.$forceUpdate();
     },
-    confirmDel(app) {
+    confirmAppDel(app) {
       for (let i = 0; i < this.app_list.length; i++) {
         if (this.app_list[i]) {
           if (this.app_list[i].id === app.id) {
@@ -182,13 +203,69 @@ export default {
         }
       }
       window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
-      this.showDelWindow = false;
+      this.showAppDelWindow = false;
       this.$forceUpdate();
     },
-    closeDelWindow() {
-      this.showDelWindow = false;
+    closeAppDelWindow() {
+      this.showAppDelWindow = false;
       this.$forceUpdate();
-    }
+    },
+    onAppDragStart(app, event) {
+      event.dataTransfer.setData("app.id", app.id);
+    },
+    onAppDropStop(app, event) {
+
+      let dragId = event.dataTransfer.getData("app.id");
+      let dropId = app.id;
+      if (dragId === dropId) {
+        // A到A，无意义的操作
+        return;
+      }
+
+      // 来源
+      let drag;
+      let dragIndex = 0;
+      for (let i = 0; i < this.app_list.length; i++) {
+        if (this.app_list[i].id === dragId) {
+          dragIndex = i;
+          drag = this.app_list[i];
+          break;
+        }
+      }
+
+      // 目标
+      let drop;
+      let dropIndex = 0;
+      for (let i = 0; i < this.app_list.length; i++) {
+        if (this.app_list[i].id === dropId) {
+          dropIndex = i;
+          drop = this.app_list[i];
+          break;
+        }
+      }
+
+      if (dragIndex > dropIndex) {
+        // 向前拖动
+        // 先删除，后插入，索引不变
+        this.app_list.splice(dragIndex, 1);
+        this.app_list.splice(dropIndex, 0, drag);
+
+      } else {
+        // 向后拖动
+        // 先插入，后删除，索引不变
+        this.app_list.splice(dropIndex, 0, drag);
+        this.app_list.splice(dragIndex, 1);
+
+      }
+
+      this.save();
+
+    },
+
+    save() {
+      window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
+      this.$forceUpdate();
+    },
 
   },
   created() {

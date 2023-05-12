@@ -1,6 +1,6 @@
 <template>
-  <div>
-
+  <div @dragover.prevent
+       @drop.stop="onAppDropStop(null, $event)">
     <!--背景-->
     <div>
       <Background></Background>
@@ -18,14 +18,16 @@
 
     <div>
       <button @click="openAppAddWindow">添加</button>
+      <button @click="openSystemSetWindow">设置</button>
     </div>
 
     <!--应用展示区域-->
-    <div>
+    <div style="border: 1px solid red; display: inline-block">
       <template v-for="(a,b,c) in app_list">
 
         <!--应用-->
         <div
+            :ref="`app_${a.id}`"
             style="border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 10px;"
             draggable="true"
             @dragover.prevent
@@ -117,6 +119,26 @@
       </div>
     </div>
 
+    <!--系统设置-->
+    <div v-show="showSystemSetWindow"
+         style="position: fixed; border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 36px; background-color: #ffffff;">
+      <div>
+        <div>拖动规则</div>
+        <select v-model="drag_rule_selected">
+          <option
+              v-for="(a, b, c) in drag_rule_list"
+              :value="a.id"
+              :key=b
+          >{{ a.name }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <button @click="confirmSystemSet">确定</button>
+        <button @click="closeSystemSetWindow">取消</button>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -133,6 +155,7 @@ export default {
       showAppAddWindow: false,
       showAppSetWindow: false,
       showAppDelWindow: false,
+      showSystemSetWindow: false,
       app: {
         id: 0,
         name: "",
@@ -140,11 +163,27 @@ export default {
         favicon: "",
       },
       app_list: [],
+      drag_rule_list: [
+        {
+          id: "1",
+          name: "流式排序",
+        },
+        {
+          id: "2",
+          name: "绝对定位",
+        },
+      ],
+      drag_rule_selected: "1",
+      ex: 0,
+      ey: 0,
+      wx: 0,
+      wy: 0,
     };
   },
   methods: {
     init() {
       this.app_list = JSON.parse(window.localStorage.getItem("ziji.app_list")) || [];
+      this.drag_rule_selected = window.localStorage.getItem("ziji.drag_rule_selected") || "1";
     },
     openAppAddWindow() {
       this.app = {
@@ -212,25 +251,38 @@ export default {
     },
     onAppDragStart(app, event) {
       event.dataTransfer.setData("app.id", app.id);
+      this.ex = event.clientX;
+      this.ey = event.clientY;
+      this.wx = this.$refs[`app_${app.id}`][0].offsetLeft;
+      this.wy = this.$refs[`app_${app.id}`][0].offsetTop;
     },
     onAppDropStop(app, event) {
 
-      let dragId = event.dataTransfer.getData("app.id");
-      let dropId = app.id;
-      if (dragId === dropId) {
-        // A到A，无意义的操作
-        return;
-      }
-
       // 来源
-      let drag;
-      let dragIndex = 0;
+      let dragId, drag, dragIndex;
+      dragId = event.dataTransfer.getData("app.id");
+      dragIndex = 0;
       for (let i = 0; i < this.app_list.length; i++) {
         if (this.app_list[i].id === dragId) {
           dragIndex = i;
           drag = this.app_list[i];
           break;
         }
+      }
+
+      if (app === null && this.drag_rule_selected === "2") {
+        let left = event.clientX - this.ex + this.wx;
+        let top = event.clientY - this.ey + this.wy;
+        this.$refs[`app_${dragId}`][0].style.position = "absolute"
+        this.$refs[`app_${dragId}`][0].style.left = left + "px";
+        this.$refs[`app_${dragId}`][0].style.top = top + "px";
+        return;
+      }
+
+      let dropId = app.id;
+      if (dragId === dropId) {
+        // A到A，无意义的操作
+        return;
       }
 
       // 目标
@@ -267,6 +319,17 @@ export default {
       this.$forceUpdate();
     },
 
+    openSystemSetWindow() {
+      this.showSystemSetWindow = true;
+    },
+
+    confirmSystemSet() {
+      window.localStorage.setItem("ziji.drag_rule_selected", this.drag_rule_selected);
+      this.showSystemSetWindow = false;
+    },
+    closeSystemSetWindow() {
+      this.showSystemSetWindow = false;
+    },
   },
   created() {
     this.init();

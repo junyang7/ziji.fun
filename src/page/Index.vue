@@ -28,7 +28,15 @@
         <!--应用-->
         <div
             :ref="`app_${a.id}`"
-            style="border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 10px;"
+            :style="{
+              'border': '1px solid red',
+              'display': 'inline-block',
+              'box-sizing': 'border-box',
+              'padding': '10px',
+              'position': a.position,
+              'left': a.left,
+              'top': a.top,
+            }"
             draggable="true"
             @dragover.prevent
             @dragstart="onAppDragStart(a, $event)"
@@ -123,7 +131,7 @@
     <div v-show="showSystemSetWindow"
          style="position: fixed; border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 36px; background-color: #ffffff;">
       <div>
-        <div>拖动规则</div>
+        <div>图标排列规则</div>
         <select v-model="drag_rule_selected">
           <option
               v-for="(a, b, c) in drag_rule_list"
@@ -161,16 +169,19 @@ export default {
         name: "",
         url: "",
         favicon: "",
+        position: "",
+        left: "0",
+        top: "0",
       },
       app_list: [],
       drag_rule_list: [
         {
           id: "1",
-          name: "流式排序",
+          name: "自动排列",
         },
         {
           id: "2",
-          name: "绝对定位",
+          name: "自由放置",
         },
       ],
       drag_rule_selected: "1",
@@ -185,70 +196,18 @@ export default {
       this.app_list = JSON.parse(window.localStorage.getItem("ziji.app_list")) || [];
       this.drag_rule_selected = window.localStorage.getItem("ziji.drag_rule_selected") || "1";
     },
-    openAppAddWindow() {
-      this.app = {
-        id: ((new Date()).getTime() + Math.random() * 1000000).toString().replace(".", ""),
-        name: "",
-        url: "",
-        favicon: "",
-      };
-      this.showAppAddWindow = true;
-      this.$forceUpdate();
-    },
-    confirmAppAdd() {
-      this.app_list.push(JSON.parse(JSON.stringify(this.app)));
-      window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
-      this.showAppAddWindow = false;
-      this.$forceUpdate();
-    },
-    closeAppAddWindow() {
-      this.showAppAddWindow = false;
-      this.$forceUpdate();
-    },
     open(app) {
       window.open(app.url)
     },
-    openAppSetWindow(app) {
-      this.app = JSON.parse(JSON.stringify(app))
-      this.showAppSetWindow = true;
-      this.$forceUpdate();
-    },
-    confirmAppSet(app) {
-      for (let i = 0; i < this.app_list.length; i++) {
-        if (this.app_list[i].id === app.id) {
-          this.app_list[i] = app;
-        }
-      }
+    save() {
       window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
-      this.showAppSetWindow = false;
       this.$forceUpdate();
     },
-    closeAppSetWindow() {
-      this.showAppSetWindow = false;
-      this.$forceUpdate();
-    },
-    openAppDelWindow(app) {
-      this.app = app;
-      this.showAppDelWindow = true;
-      this.$forceUpdate();
-    },
-    confirmAppDel(app) {
-      for (let i = 0; i < this.app_list.length; i++) {
-        if (this.app_list[i]) {
-          if (this.app_list[i].id === app.id) {
-            this.app_list.splice(i, 1);
-            break;
-          }
-        }
-      }
-      window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
-      this.showAppDelWindow = false;
-      this.$forceUpdate();
-    },
-    closeAppDelWindow() {
-      this.showAppDelWindow = false;
-      this.$forceUpdate();
-    },
+    /**
+     * 当应用被拖动开始时
+     * @param app
+     * @param event
+     */
     onAppDragStart(app, event) {
       event.dataTransfer.setData("app.id", app.id);
       this.ex = event.clientX;
@@ -256,12 +215,19 @@ export default {
       this.wx = this.$refs[`app_${app.id}`][0].offsetLeft;
       this.wy = this.$refs[`app_${app.id}`][0].offsetTop;
     },
+    /**
+     * 当应用被拖动结束时（拖放）
+     * @param app
+     * @param event
+     */
     onAppDropStop(app, event) {
 
       // 来源
-      let dragId, drag, dragIndex;
+      let dragId = ""
+          , drag = null
+          , dragIndex = 0
+      ;
       dragId = event.dataTransfer.getData("app.id");
-      dragIndex = 0;
       for (let i = 0; i < this.app_list.length; i++) {
         if (this.app_list[i].id === dragId) {
           dragIndex = i;
@@ -270,12 +236,18 @@ export default {
         }
       }
 
-      if (app === null && this.drag_rule_selected === "2") {
+      // 自由放置
+      if (this.drag_rule_selected === "2") {
         let left = event.clientX - this.ex + this.wx;
         let top = event.clientY - this.ey + this.wy;
-        this.$refs[`app_${dragId}`][0].style.position = "absolute"
-        this.$refs[`app_${dragId}`][0].style.left = left + "px";
-        this.$refs[`app_${dragId}`][0].style.top = top + "px";
+        this.app_list[dragIndex].position = "absolute";
+        this.app_list[dragIndex].left = left + "px";
+        this.app_list[dragIndex].top = top + "px";
+        this.save();
+        return;
+      }
+
+      if (null === app) {
         return;
       }
 
@@ -313,20 +285,125 @@ export default {
       this.save();
 
     },
-
-    save() {
-      window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
+    /**
+     * 打开添加应用窗口
+     */
+    openAppAddWindow() {
+      this.app = {
+        id: ((new Date()).getTime() + Math.random() * 1000000).toString().replace(".", ""),
+        name: "",
+        url: "",
+        favicon: "",
+        position: "",
+        left: "0",
+        top: "0",
+      };
+      this.showAppAddWindow = true;
       this.$forceUpdate();
     },
-
+    /**
+     * 确定添加应用
+     */
+    confirmAppAdd() {
+      this.app_list.push(JSON.parse(JSON.stringify(this.app)));
+      window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
+      this.showAppAddWindow = false;
+      this.$forceUpdate();
+    },
+    /**
+     * 关闭添加应用窗口
+     */
+    closeAppAddWindow() {
+      this.showAppAddWindow = false;
+      this.$forceUpdate();
+    },
+    /**
+     * 打开修改应用窗口
+     * @param app
+     */
+    openAppSetWindow(app) {
+      this.app = JSON.parse(JSON.stringify(app))
+      this.showAppSetWindow = true;
+      this.$forceUpdate();
+    },
+    /**
+     * 确认修改应用
+     * @param app
+     */
+    confirmAppSet(app) {
+      for (let i = 0; i < this.app_list.length; i++) {
+        if (this.app_list[i].id === app.id) {
+          this.app_list[i] = app;
+        }
+      }
+      window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
+      this.showAppSetWindow = false;
+      this.$forceUpdate();
+    },
+    /**
+     * 关闭修改应用窗口
+     */
+    closeAppSetWindow() {
+      this.showAppSetWindow = false;
+      this.$forceUpdate();
+    },
+    /**
+     * 打开删除应用窗口
+     * @param app
+     */
+    openAppDelWindow(app) {
+      this.app = app;
+      this.showAppDelWindow = true;
+      this.$forceUpdate();
+    },
+    /**
+     * 确认删除应用
+     * @param app
+     */
+    confirmAppDel(app) {
+      for (let i = 0; i < this.app_list.length; i++) {
+        if (this.app_list[i]) {
+          if (this.app_list[i].id === app.id) {
+            this.app_list.splice(i, 1);
+            break;
+          }
+        }
+      }
+      window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
+      this.showAppDelWindow = false;
+      this.$forceUpdate();
+    },
+    /**
+     * 关闭删除应用窗口
+     */
+    closeAppDelWindow() {
+      this.showAppDelWindow = false;
+      this.$forceUpdate();
+    },
+    /**
+     * 打开修改系统窗口
+     */
     openSystemSetWindow() {
       this.showSystemSetWindow = true;
     },
-
+    /**
+     * 确认修改系统
+     */
     confirmSystemSet() {
+      if (this.drag_rule_selected === "1") {
+        this.app_list.forEach((app) => {
+          app.position = "";
+          app.left = "";
+          app.top = "";
+        });
+        this.save();
+      }
       window.localStorage.setItem("ziji.drag_rule_selected", this.drag_rule_selected);
       this.showSystemSetWindow = false;
     },
+    /**
+     * 关闭系统修改窗口
+     */
     closeSystemSetWindow() {
       this.showSystemSetWindow = false;
     },

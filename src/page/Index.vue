@@ -1,6 +1,7 @@
 <template>
-  <div @dragover.prevent
-       @drop.stop="onAppDropStop(null, $event)">
+  <div
+      @dragover.prevent
+      @drop.stop="onAppDropStop(null, $event)">
     <!--背景-->
     <div>
       <Background></Background>
@@ -22,11 +23,12 @@
     </div>
 
     <!--应用展示区域-->
-    <div style="border: 1px solid red; display: inline-block">
+    <div
+        style="border: 1px solid red; display: inline-block">
       <template v-for="(a,b,c) in app_list">
-
         <!--应用-->
         <div
+            :title="a.name"
             :ref="`app_${a.id}`"
             :style="{
               'border': '1px solid red',
@@ -41,36 +43,47 @@
             @dragover.prevent
             @dragstart="onAppDragStart(a, $event)"
             @drop.stop="onAppDropStop(a, $event)"
+            @contextmenu.stop="onAppContextmenu(a, $event)"
         >
-          <div
-              draggable="false"
-              @click="open(a)"
-              style="width: 50px; height: 50px; border: 1px solid red;">
-            <img
-                draggable="false"
-                :src="a.favicon" style="width: 100%; height: 100%;"/>
-          </div>
-          <div
-              draggable="false"
-              style="text-align: center;">{{ a.name }}
-          </div>
-          <div draggable="false">
-            <div draggable="false">
-              <button
-                  draggable="false"
-                  @click="openAppSetWindow(a)">修改
-              </button>
-            </div>
+          <div style="position: relative;">
             <div
-                draggable="false">
-              <button
+                draggable="false"
+                @click="open(a)"
+                style="z-index: 0; width: 50px; height: 50px; border: 1px solid red;">
+              <img
                   draggable="false"
-                  @click="openAppDelWindow(a)">删除
-              </button>
+                  :src="a.favicon"
+                  style="z-index: 0; width: 100%; height: 100%;"/>
+            </div>
+            <!--名称-->
+            <div
+                v-show="'1' === app_title_control_saved"
+                draggable="false"
+                style="z-index: 0; width: 50px; overflow-x: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center;">
+              {{ a.name }}
+            </div>
+            <!--管理-->
+            <div
+                v-show="a.showContextMenu"
+                style="z-index: 1; position: absolute; top: 0px; left: 50px; background-color: red; white-space: nowrap">
+              <div draggable="false">
+                <div draggable="false">
+                  <button
+                      draggable="false"
+                      @click="openAppSetWindow(a)">修改
+                  </button>
+                </div>
+                <div
+                    draggable="false">
+                  <button
+                      draggable="false"
+                      @click="openAppDelWindow(a)">删除
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
       </template>
     </div>
 
@@ -128,18 +141,32 @@
     </div>
 
     <!--系统设置-->
-    <div v-show="showSystemSetWindow"
-         style="position: fixed; border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 36px; background-color: #ffffff;">
+    <div
+        v-show="showSystemSetWindow"
+        style="position: fixed; border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 36px; background-color: #ffffff;">
       <div>
-        <div>图标排列规则</div>
-        <select v-model="drag_rule_selected">
-          <option
-              v-for="(a, b, c) in drag_rule_list"
-              :value="a.id"
-              :key=b
-          >{{ a.name }}
-          </option>
-        </select>
+        <div>
+          <div>图标排列规则</div>
+          <select v-model="drag_rule_selected">
+            <option
+                v-for="(a, b, c) in drag_rule_list"
+                :value="a.id"
+                :key=b
+            >{{ a.name }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <div>名称处理方案</div>
+          <select v-model="app_title_control_selected">
+            <option
+                v-for="(a, b, c) in app_title_control_list"
+                :value="a.id"
+                :key=b
+            >{{ a.name }}
+            </option>
+          </select>
+        </div>
       </div>
       <div>
         <button @click="confirmSystemSet">确定</button>
@@ -164,6 +191,7 @@ export default {
       showAppSetWindow: false,
       showAppDelWindow: false,
       showSystemSetWindow: false,
+      showAppRightClickWindow: false,
       app: {
         id: 0,
         name: "",
@@ -172,6 +200,7 @@ export default {
         position: "",
         left: "0",
         top: "0",
+        showContextMenu: false,
       },
       app_list: [],
       drag_rule_list: [
@@ -184,7 +213,19 @@ export default {
           name: "自由放置",
         },
       ],
+      app_title_control_list: [
+        {
+          id: "1",
+          name: "展示",
+        },
+        {
+          id: "2",
+          name: "隐藏",
+        },
+      ],
       drag_rule_selected: "1",
+      app_title_control_selected: "1",
+      app_title_control_saved: "1",
       ex: 0,
       ey: 0,
       wx: 0,
@@ -195,6 +236,17 @@ export default {
     init() {
       this.app_list = JSON.parse(window.localStorage.getItem("ziji.app_list")) || [];
       this.drag_rule_selected = window.localStorage.getItem("ziji.drag_rule_selected") || "1";
+      this.app_title_control_selected = this.app_title_control_saved = window.localStorage.getItem("ziji.app_title_control_saved") || "1";
+      window.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.setAllAppShowContextMenuFalse();
+      }
+      window.oncontextmenu = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.setAllAppShowContextMenuFalse();
+      }
     },
     open(app) {
       window.open(app.url)
@@ -297,6 +349,7 @@ export default {
         position: "",
         left: "0",
         top: "0",
+        showContextMenu: false,
       };
       this.showAppAddWindow = true;
       this.$forceUpdate();
@@ -396,10 +449,12 @@ export default {
           app.left = "";
           app.top = "";
         });
-        this.save();
       }
+      this.app_title_control_saved = this.app_title_control_selected;
       window.localStorage.setItem("ziji.drag_rule_selected", this.drag_rule_selected);
+      window.localStorage.setItem("ziji.app_title_control_saved", this.app_title_control_saved);
       this.showSystemSetWindow = false;
+      this.save();
     },
     /**
      * 关闭系统修改窗口
@@ -407,6 +462,23 @@ export default {
     closeSystemSetWindow() {
       this.showSystemSetWindow = false;
     },
+    onAppContextmenu(app, event) {
+      event.preventDefault();
+      for (let i = 0; i < this.app_list.length; i++) {
+        if (app.id === this.app_list[i].id) {
+          this.app_list[i].showContextMenu = true;
+        } else {
+          this.app_list[i].showContextMenu = false;
+        }
+      }
+      this.$forceUpdate();
+    },
+    setAllAppShowContextMenuFalse() {
+      for (let i = 0; i < this.app_list.length; i++) {
+        this.app_list[i].showContextMenu = false;
+      }
+      this.$forceUpdate();
+    }
   },
   created() {
     this.init();

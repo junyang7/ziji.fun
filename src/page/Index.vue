@@ -17,51 +17,47 @@
       <Search></Search>
     </div>
 
-    <div>
-      <button @click="openAppAddWindow">添加</button>
-      <button @click="openSystemSetWindow">设置</button>
-    </div>
-
     <!--应用展示区域-->
-    <div
-        style="border: 1px solid red; display: inline-block">
+    <div style="display: flex;">
       <template v-for="(a,b,c) in app_list">
+
         <!--应用-->
         <div
-            :title="a.name"
-            :ref="`app_${a.id}`"
             :style="{
-              'border': '1px solid red',
-              'display': 'inline-block',
-              'box-sizing': 'border-box',
-              'padding': '10px',
-              'position': a.position,
-              'left': a.left,
-              'top': a.top,
-            }"
+                  'position': a.position,
+                  'left': a.left,
+                  'top': a.top,
+                  'width': '64px',
+                }"
+            :ref="`app_${a.id}`"
+            :title="a.name"
             draggable="true"
             @dragover.prevent
             @dragstart="onAppDragStart(a, $event)"
-            @drop.stop="onAppDropStop(a, $event)"
             @contextmenu.stop="onAppContextmenu(a, $event)"
+            @click="open(a)"
         >
-          <div style="position: relative;">
-            <div
-                draggable="false"
-                @click="open(a)"
-                style="z-index: 0; width: 50px; height: 50px; border: 1px solid red;">
-              <img
-                  draggable="false"
-                  :src="a.favicon"
-                  style="z-index: 0; width: 100%; height: 100%;"/>
+
+          <div style="position: relative">
+            <div style="height: 64px; width: 64px; display: flex; justify-content: center; align-items: center;">
+              <!--图标-->
+              <div
+                  style="width: 54px; height: 54px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 0 10px 1px rgba(200, 200, 200, 0.5);">
+                <img
+                    draggable="false"
+                    :src="a.favicon" style="height: 100%; width: 100%; display: block; border-radius: 12px;"/>
+              </div>
             </div>
-            <!--名称-->
             <div
                 v-show="'1' === app_title_control_saved"
-                draggable="false"
-                style="z-index: 0; width: 50px; overflow-x: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center;">
-              {{ a.name }}
+                style="height: 24px; width: 64px; display: flex; justify-content: center; align-items: baseline;">
+              <!--名称-->
+              <div
+                  style="width: 48px; font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center;">
+                {{ a.name }}
+              </div>
             </div>
+
             <!--管理-->
             <div
                 v-show="a.showContextMenu"
@@ -82,10 +78,26 @@
                 </div>
               </div>
             </div>
+
           </div>
         </div>
+
+        <!--拖动排序坑点-->
+        <div
+            :ref="`space-${b}`"
+            @dragenter="dragEnter(b)"
+            @dragleave="dragLeave(b)"
+            @drop.stop="dropAppInSpace(b, a, $event)"
+            style="width: 8px;">
+          <div style="height: 64px; width: 64px; display: flex; justify-content: center; align-items: center;"></div>
+          <div
+              v-show="'1' === app_title_control_saved"
+              style="height: 24px; width: 64px; display: flex; justify-content: center; align-items: baseline;"></div>
+        </div>
+
       </template>
     </div>
+
 
     <!--弹框-->
     <!--添加-->
@@ -139,7 +151,6 @@
         <button @click="closeAppDelWindow">取消</button>
       </div>
     </div>
-
     <!--系统设置-->
     <div
         v-show="showSystemSetWindow"
@@ -173,6 +184,40 @@
         <button @click="closeSystemSetWindow">取消</button>
       </div>
     </div>
+    <!--右键-->
+    <div
+        v-show="contextMenu.show"
+        :style="{
+          'top': contextMenu.display.top,
+          'left': contextMenu.display.left,
+        }"
+        ref="context-menu"
+        class="context-menu">
+      <div draggable="false">
+        <div draggable="false">
+          <button @click="openAppAddWindow">添加应用</button>
+        </div>
+        <div>
+          <button @click="openFolderAddWindow">添加文件夹</button>
+        </div>
+        <div>
+          <button @click="openSystemSetWindow">系统设置</button>
+        </div>
+      </div>
+    </div>
+    <!--添加文件夹-->
+    <div v-show="showFolderAddWindow"
+         style="position: fixed; border: 1px solid red; display: inline-block; box-sizing: border-box; padding: 36px; background-color: #ffffff;">
+      <div>
+        <div>名称</div>
+        <input v-model="folder.name"/>
+      </div>
+      <div>
+        <button @click="confirmFolderAdd">添加</button>
+        <button @click="closeFolderAWindow">取消</button>
+      </div>
+    </div>
+
 
   </div>
 </template>
@@ -192,6 +237,28 @@ export default {
       showAppDelWindow: false,
       showSystemSetWindow: false,
       showAppRightClickWindow: false,
+      showFolderAddWindow: false,
+
+      contextMenu: {
+        show: false,
+        display: {
+          top: "0px",
+          left: "0px",
+        },
+      },
+
+      folder: {
+        id: 0,
+        name: "",
+        url: "",
+        favicon: "",
+        position: "",
+        left: "0",
+        top: "0",
+        showContextMenu: false,
+        type: 2, // 文件夹
+      },
+
       app: {
         id: 0,
         name: "",
@@ -201,6 +268,7 @@ export default {
         left: "0",
         top: "0",
         showContextMenu: false,
+        type: 1, // 应用
       },
       app_list: [],
       drag_rule_list: [
@@ -241,11 +309,15 @@ export default {
         event.preventDefault();
         event.stopPropagation();
         this.setAllAppShowContextMenuFalse();
+        this.contextMenu.show = false;
       }
       window.oncontextmenu = (event) => {
         event.preventDefault();
         event.stopPropagation();
         this.setAllAppShowContextMenuFalse();
+        this.contextMenu.display.top = event.clientY + "px";
+        this.contextMenu.display.left = event.clientX + "px";
+        this.contextMenu.show = true;
       }
     },
     open(app) {
@@ -274,6 +346,11 @@ export default {
      */
     onAppDropStop(app, event) {
 
+      // 自由放置
+      if (this.drag_rule_selected !== "2") {
+        return;
+      }
+
       // 来源
       let dragId = ""
           , drag = null
@@ -288,53 +365,51 @@ export default {
         }
       }
 
-      // 自由放置
-      if (this.drag_rule_selected === "2") {
-        let left = event.clientX - this.ex + this.wx;
-        let top = event.clientY - this.ey + this.wy;
-        this.app_list[dragIndex].position = "absolute";
-        this.app_list[dragIndex].left = left + "px";
-        this.app_list[dragIndex].top = top + "px";
-        this.save();
-        return;
-      }
 
-      if (null === app) {
-        return;
-      }
-
-      let dropId = app.id;
-      if (dragId === dropId) {
-        // A到A，无意义的操作
-        return;
-      }
-
-      // 目标
-      let drop;
-      let dropIndex = 0;
-      for (let i = 0; i < this.app_list.length; i++) {
-        if (this.app_list[i].id === dropId) {
-          dropIndex = i;
-          drop = this.app_list[i];
-          break;
-        }
-      }
-
-      if (dragIndex > dropIndex) {
-        // 向前拖动
-        // 先删除，后插入，索引不变
-        this.app_list.splice(dragIndex, 1);
-        this.app_list.splice(dropIndex, 0, drag);
-
-      } else {
-        // 向后拖动
-        // 先插入，后删除，索引不变
-        this.app_list.splice(dropIndex, 0, drag);
-        this.app_list.splice(dragIndex, 1);
-
-      }
-
+      let left = event.clientX - this.ex + this.wx;
+      let top = event.clientY - this.ey + this.wy;
+      this.app_list[dragIndex].position = "absolute";
+      this.app_list[dragIndex].left = left + "px";
+      this.app_list[dragIndex].top = top + "px";
       this.save();
+
+      //
+      // if (null === app) {
+      //   return;
+      // }
+      //
+      // let dropId = app.id;
+      // if (dragId === dropId) {
+      //   // A到A，无意义的操作
+      //   return;
+      // }
+      //
+      // // 目标
+      // let drop;
+      // let dropIndex = 0;
+      // for (let i = 0; i < this.app_list.length; i++) {
+      //   if (this.app_list[i].id === dropId) {
+      //     dropIndex = i;
+      //     drop = this.app_list[i];
+      //     break;
+      //   }
+      // }
+      //
+      // if (dragIndex > dropIndex) {
+      //   // 向前拖动
+      //   // 先删除，后插入，索引不变
+      //   this.app_list.splice(dragIndex, 1);
+      //   this.app_list.splice(dropIndex, 0, drag);
+      //
+      // } else {
+      //   // 向后拖动
+      //   // 先插入，后删除，索引不变
+      //   this.app_list.splice(dropIndex, 0, drag);
+      //   this.app_list.splice(dragIndex, 1);
+      //
+      // }
+
+      // this.save();
 
     },
     /**
@@ -350,6 +425,7 @@ export default {
         left: "0",
         top: "0",
         showContextMenu: false,
+        type: 1, // 应用
       };
       this.showAppAddWindow = true;
       this.$forceUpdate();
@@ -478,7 +554,93 @@ export default {
         this.app_list[i].showContextMenu = false;
       }
       this.$forceUpdate();
-    }
+    },
+    openFolderAddWindow() {
+      this.folder = {
+        id: ((new Date()).getTime() + Math.random() * 1000000).toString().replace(".", ""),
+        name: "未命名",
+        url: "",
+        favicon: "",
+        position: "",
+        left: "0",
+        top: "0",
+        showContextMenu: false,
+        type: 2,
+      };
+      this.showFolderAddWindow = true;
+    },
+    confirmFolderAdd() {
+      this.app_list.push(JSON.parse(JSON.stringify(this.folder)));
+      window.localStorage.setItem("ziji.app_list", JSON.stringify(this.app_list));
+      this.showFolderAddWindow = false;
+      this.$forceUpdate();
+    },
+    closeFolderAWindow() {
+      this.showFolderAddWindow = false;
+    },
+    dragEnter(index) {
+      if (this.drag_rule_selected === "2") {
+        return;
+      }
+      this.$refs[`space-${index}`][0].style.width = "64px"
+    },
+    dragLeave(index) {
+      this.$refs[`space-${index}`][0].style.width = "8px"
+    },
+
+    /**
+     * 将APP放置到空隙上
+     * @param index
+     * @param app
+     * @param event
+     */
+    dropAppInSpace(dropIndex, app, event) {
+
+      if (this.drag_rule_selected === "2") {
+        this.onAppDropStop(app, event);
+        return;
+      }
+
+      this.$refs[`space-${dropIndex}`][0].style.width = "8px";
+
+      // 来源
+      let dragId = ""
+          , drag = null
+          , dragIndex = 0
+      ;
+      dragId = event.dataTransfer.getData("app.id");
+      for (let i = 0; i < this.app_list.length; i++) {
+        if (this.app_list[i].id === dragId) {
+          dragIndex = i;
+          drag = this.app_list[i];
+          break;
+        }
+      }
+
+      if (dragIndex === dropIndex) {
+        return;
+      }
+
+      // 目标
+      let drop = this.app_list[dropIndex];
+
+      if (dragIndex > dropIndex) {
+        // 向前拖动
+        // 先删除，后插入，索引不变
+        this.app_list.splice(dragIndex, 1);
+        this.app_list.splice(dropIndex + 1, 0, drag);
+
+      } else {
+        // 向后拖动
+        // 先插入，后删除，索引不变
+        this.app_list.splice(dropIndex + 1, 0, drag);
+        this.app_list.splice(dragIndex, 1);
+
+      }
+
+      this.save();
+
+    },
   },
   created() {
     this.init();
@@ -487,5 +649,37 @@ export default {
 </script>
 
 <style scoped>
+.app {
+  width: 70px;
+  height: 90px;
+  border: 1px solid red;
+  justify-content: center;
+}
 
+.app .favicon {
+  z-index: 0;
+  width: 50px;
+  height: 50px;
+  border: 1px solid red;
+  border-radius: 10px;
+}
+
+.app-space {
+  display: block;
+  width: 70px;
+  height: 90px;
+  background-color: red;
+}
+
+
+.context-menu {
+  z-index: 1;
+  position: absolute;
+  background-color: red;
+  white-space: nowrap;
+}
+
+.folder {
+
+}
 </style>

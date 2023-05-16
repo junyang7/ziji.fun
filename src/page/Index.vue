@@ -1,7 +1,8 @@
 <template>
   <div
       @dragover.prevent
-      @drop.stop="onAppDropStop(null, $event)">
+      @drop.stop="onAppDropStop(null, $event)"
+  >
     <!--背景-->
     <div>
       <Background></Background>
@@ -36,6 +37,7 @@
             @dragstart="onAppDragStart(a, $event)"
             @contextmenu.stop="onAppContextmenu(a, $event)"
             @click="open(a)"
+            @drop.stop="onDropAToB(a, $event)"
         >
 
           <div style="position: relative">
@@ -566,6 +568,7 @@ export default {
         top: "0",
         showContextMenu: false,
         type: 2,
+        children: [],
       };
       this.showFolderAddWindow = true;
     },
@@ -641,6 +644,98 @@ export default {
       this.save();
 
     },
+
+    /**
+     * 将一个应用拖动到另一个应用上
+     * 生成文件，将两个应用都放进去
+     * 放置到文件中
+     * @param app
+     * @param event
+     */
+    onDropAToB(app, event) {
+
+      // 来源
+      let dragId = ""
+          , dragIndex = 0
+          , drag = null
+      ;
+      dragId = event.dataTransfer.getData("app.id");
+      for (let i = 0; i < this.app_list.length; i++) {
+        if (this.app_list[i].id === dragId) {
+          dragIndex = i;
+          drag = this.app_list[i];
+          break;
+        }
+      }
+
+      // 来源
+      let dropId = ""
+          , dropIndex = 0
+          , drop = null
+      ;
+
+      dropId = app.id;
+      for (let i = 0; i < this.app_list.length; i++) {
+        if (this.app_list[i].id === dropId) {
+          dropIndex = i;
+          drop = this.app_list[i];
+          break;
+        }
+      }
+
+      if (this.app_list[dropIndex].type === 2) {
+        // 将文件拖动到文件夹中
+
+        // 如果文件夹没有children属性，则添加children属性
+        // 将文件追加到文件夹中
+        // 移除文件
+
+        if (!this.app_list[dropIndex].hasOwnProperty("children")) {
+          this.app_list[dropIndex]["children"] = [];
+        }
+        this.app_list[dropIndex].children.push(drag);
+        this.app_list.splice(dragIndex, 1);
+
+      } else {
+        // 将文件拖放到文件上
+
+        // 在释放的位置创建文件夹
+        // 将两个文件添加到文件中
+        // 移除两个文件
+
+        this.folder = {
+          id: ((new Date()).getTime() + Math.random() * 1000000).toString().replace(".", ""),
+          name: "文件夹",
+          url: "",
+          favicon: "",
+          position: drop.position,
+          left: drop.left,
+          top: drop.top,
+          showContextMenu: false,
+          type: 2,
+          children: [
+            drop,
+            drag,
+          ],
+        };
+
+        if (dragIndex > dropIndex) {
+          // 从右向左
+          this.app_list.splice(dragIndex, 1);
+          this.app_list.splice(dropIndex, 1);
+          this.app_list.splice(dropIndex, 0, this.folder);
+        } else {
+          // 从左向右
+          this.app_list.splice(dropIndex, 1);
+          this.app_list.splice(dragIndex, 1);
+          this.app_list.splice(dragIndex, 0, this.folder);
+        }
+      }
+
+      this.save();
+
+    },
+
   },
   created() {
     this.init();

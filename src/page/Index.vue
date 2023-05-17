@@ -19,7 +19,7 @@
     </div>
 
     <!--应用展示区域-->
-    <div style="display: flex;">
+    <div style="display: flex; flex-wrap: wrap;">
       <template v-for="(a,b,c) in app_list">
 
         <!--应用-->
@@ -28,7 +28,10 @@
                   'position': a.position,
                   'left': a.left,
                   'top': a.top,
-                  'width': '64px',
+                  'width': '74px',
+                  'height':'100px',
+                  // 'border': '1px solid red',
+                  'display': 'flex',
                 }"
             :ref="`app_${a.id}`"
             :title="a.name"
@@ -36,28 +39,60 @@
             @dragover.prevent
             @dragstart="onAppDragStart(a, $event)"
             @contextmenu.stop="onAppContextmenu(a, $event)"
-            @click="open(a)"
             @drop.stop="onDropAToB(a, $event)"
         >
 
-          <div style="position: relative">
-            <div style="height: 64px; width: 64px; display: flex; justify-content: center; align-items: center;">
-              <!--图标-->
-              <div
-                  style="width: 54px; height: 54px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 0 10px 1px rgba(200, 200, 200, 0.5);">
-                <img
-                    draggable="false"
-                    :src="a.favicon" style="height: 100%; width: 100%; display: block; border-radius: 12px;"/>
-              </div>
+          <!--左侧排序坑位-->
+          <div
+              :ref="`rank:${b-1}`"
+              @dragenter="dragEnter(a.id, b-1)"
+              @dragleave="dragLeave(a.id, b-1)"
+              @drop.stop="dropAppInSpace(b-1, b, a, $event)"
+              style="height: 100%; width: 10px;"
+          ></div>
+          <!--内容区域-->
+          <div style="position: relative;">
+
+            <!--图标-->
+            <div
+                @click="open(a)"
+                style="height: 54px; width: 54px; display: flex; justify-content: center; align-items: center; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 0 10px 1px rgba(200, 200, 200, 0.5);">
+              <!--多个-->
+              <template v-if="a.type === 2 && a.hasOwnProperty('children')">
+                <div style="position: relative; width: 48px; height: 48px;">
+                  <template v-if="a.type === 2 && a.hasOwnProperty('children')">
+                    <div
+                        class="folder-favicon"
+                        v-for="(d,e,f) in a.children.slice(0,9)">
+                      <img
+                          draggable="false"
+                          :src="d.favicon"
+                          style="height: 100%; width: 100%; display: block;"
+                      />
+                    </div>
+                  </template>
+                </div>
+              </template>
+              <!--单个-->
+              <template v-else>
+                <div>
+                  <img
+                      draggable="false"
+                      :src="a.favicon"
+                      style="height: 100%; width: 100%; display: block; border-radius: 12px;"
+                  />
+                </div>
+              </template>
             </div>
+
+            <!--文本-->
             <div
                 v-show="'1' === app_title_control_saved"
-                style="height: 24px; width: 64px; display: flex; justify-content: center; align-items: baseline;">
-              <!--名称-->
+                style="height: 24px; width: 54px; display: flex; justify-content: center; align-items: center;"
+            >
               <div
-                  style="width: 48px; font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center;">
-                {{ a.name }}
-              </div>
+                  style="width: 48px; font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center; color: rgba(255, 255, 255, 0.8);"
+              >{{ a.name }}</div>
             </div>
 
             <!--管理-->
@@ -82,21 +117,15 @@
             </div>
 
           </div>
-        </div>
-
-        <!--拖动排序坑点-->
-        <div
-            :ref="`space-${b}`"
-            @dragenter="dragEnter(b)"
-            @dragleave="dragLeave(b)"
-            @drop.stop="dropAppInSpace(b, a, $event)"
-            style="width: 8px;">
-          <div style="height: 64px; width: 64px; display: flex; justify-content: center; align-items: center;"></div>
+          <!--右侧排序坑位-->
           <div
-              v-show="'1' === app_title_control_saved"
-              style="height: 24px; width: 64px; display: flex; justify-content: center; align-items: baseline;"></div>
+              :ref="`rank:${b+1}`"
+              @dragenter="dragEnter(a.id, b+1)"
+              @dragleave="dragLeave(a.id, b+1)"
+              @drop.stop="dropAppInSpace(b+1, b, a, $event)"
+              style="height: 100%; width: 10px;"
+          ></div>
         </div>
-
       </template>
     </div>
 
@@ -581,14 +610,13 @@ export default {
     closeFolderAWindow() {
       this.showFolderAddWindow = false;
     },
-    dragEnter(index) {
-      if (this.drag_rule_selected === "2") {
-        return;
-      }
-      this.$refs[`space-${index}`][0].style.width = "64px"
+    dragEnter(id, index) {
+      this.$refs[`rank:${index}`][0].style.width = "74px"
+      this.$refs[`app_${id}`][0].style.width = "148px"
     },
-    dragLeave(index) {
-      this.$refs[`space-${index}`][0].style.width = "8px"
+    dragLeave(id, index) {
+      this.$refs[`rank:${index}`][0].style.width = "10px"
+      this.$refs[`app_${id}`][0].style.width = "74px"
     },
 
     /**
@@ -597,14 +625,12 @@ export default {
      * @param app
      * @param event
      */
-    dropAppInSpace(dropIndex, app, event) {
+    dropAppInSpace(d, dropIndex, app, event) {
 
-      if (this.drag_rule_selected === "2") {
-        this.onAppDropStop(app, event);
-        return;
-      }
 
-      this.$refs[`space-${dropIndex}`][0].style.width = "8px";
+      this.$refs[`rank:${d}`][0].style.width = "10px"
+      this.$refs[`app_${app.id}`][0].style.width = "74px"
+
 
       // 来源
       let dragId = ""
@@ -620,25 +646,22 @@ export default {
         }
       }
 
-      if (dragIndex === dropIndex) {
+
+      if (dragIndex === dropIndex || d === dropIndex) {
         return;
       }
 
       // 目标
       let drop = this.app_list[dropIndex];
 
-      if (dragIndex > dropIndex) {
-        // 向前拖动
-        // 先删除，后插入，索引不变
+      if (d < dragIndex) {
+        // 左
         this.app_list.splice(dragIndex, 1);
         this.app_list.splice(dropIndex + 1, 0, drag);
-
       } else {
-        // 向后拖动
-        // 先插入，后删除，索引不变
+        // 右
         this.app_list.splice(dropIndex + 1, 0, drag);
         this.app_list.splice(dragIndex, 1);
-
       }
 
       this.save();
@@ -759,12 +782,7 @@ export default {
   border-radius: 10px;
 }
 
-.app-space {
-  display: block;
-  width: 70px;
-  height: 90px;
-  background-color: red;
-}
+
 
 
 .context-menu {
@@ -774,7 +792,93 @@ export default {
   white-space: nowrap;
 }
 
-.folder {
 
+
+
+.folder-favicon
+{
+
+}
+
+.folder-favicon {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(200, 200, 200, 0.5);
+  box-shadow: 0 0 20px 2px rgba(200, 200, 200, 0.5);
+}
+
+.folder-favicon:nth-child(1) {
+  left: 0;
+  top: 0;
+  border-radius: 8px 4px 4px 4px;
+}
+.folder-favicon:nth-child(1) > img {
+  border-radius: 8px 4px 4px 4px;
+}
+
+.folder-favicon:nth-child(2) {
+  left: 16px;
+  top: 0;
+}
+
+.folder-favicon:nth-child(3) {
+  left: 32px;
+  top: 0;
+  border-radius: 4px 8px 4px 4px;
+}
+.folder-favicon:nth-child(3) > img {
+  border-radius: 4px 8px 4px 4px;
+}
+
+.folder-favicon:nth-child(4) {
+  left: 0;
+  top: 16px;
+}
+
+.folder-favicon:nth-child(5) {
+  left: 16px;
+  top: 16px;
+}
+
+.folder-favicon:nth-child(6) {
+  left: 32px;
+  top: 16px;
+}
+
+.folder-favicon:nth-child(7) {
+  left: 0;
+  top: 32px;
+  border-radius: 4px 4px 4px 8px;
+}
+.folder-favicon:nth-child(7) >img {
+  border-radius: 4px 4px 4px 8px;
+}
+
+.folder-favicon:nth-child(8) {
+  left: 16px;
+  top: 32px;
+}
+
+.folder-favicon:nth-child(9) {
+  left: 32px;
+  top: 32px;
+  border-radius: 4px 4px 8px 4px;
+}
+.folder-favicon:nth-child(9) > img {
+  border-radius: 4px 4px 8px 4px;
+}
+img {
+  width: 100%;
+  height: 100%;
+}
+
+img[src=""], img:not([src]) {
+  opacity: 0;
 }
 </style>
